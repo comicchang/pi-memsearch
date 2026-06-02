@@ -25,16 +25,9 @@ export interface SearchResult {
 // --- 以下类型使用 any 占位，待对应文件实现后自然连接 ---
 
 // 来自 src/config.ts
-export interface MemsearchConfig {
-    // TODO: 待 config.ts 实现后填充
-    [key: string]: any;
-}
-
-// 来自 src/client.ts
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface MemsearchClient {
-    // TODO: 待 client.ts 实现后填充
-}
+import type { MemsearchConfig, MemsearchScoping } from "./config";
+import type { MemsearchClient } from "./client";
+export type { MemsearchConfig, MemsearchScoping, MemsearchClient };
 
 /**
  * MemsearchSessionState 构造选项。

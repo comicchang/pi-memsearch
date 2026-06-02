@@ -1,0 +1,40 @@
+{
+  "name": "pi-memsearch",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./omp": {
+      "types": "./dist/plugin.d.ts",
+      "import": "./dist/plugin.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "toml": "^3.0.0"
+  },
+  "peerDependencies": {
+    "@oh-my-pi/pi-agent-core": "*",
+    "@oh-my-pi/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "typescript": "^5.0",
+    "vitest": "^3.0.0"
+  },
+  "pi": {
+    "extensions": ["./dist/plugin.js"]
+  }
+}
