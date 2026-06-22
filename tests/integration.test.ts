@@ -10,9 +10,8 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { writeFile, mkdir, rm } from "node:fs/promises";
 import { loadMemsearchConfig } from "../src/config";
+import { MemsearchClient } from "../src/client";
 import type { MemsearchConfig } from "../src/config";
-
-const { MemsearchClient } = await import("../src/client");
 
 // ── ENV Gate ──
 const runIntegration = process.env.RUN_MEMSEARCH_INTEGRATION === "1";
@@ -85,13 +84,13 @@ describeIf("memsearch CLI integration", () => {
     await rm(testDir, { recursive: true, force: true });
   });
 
-  it("index — 应索引 markdown 文件并返回 chunk 数", () => {
-    const count = client.index();
+  it("index — 应索引 markdown 文件并返回 chunk 数", async () => {
+    const count = await client.index();
     expect(count).toBeGreaterThan(0);
   });
 
-  it("search — 应返回匹配结果", () => {
-    const results = client.search("memory system", 5);
+  it("search — 应返回匹配结果", async () => {
+    const results = await client.search("memory system", 5);
     expect(results.length).toBeGreaterThan(0);
     expect(results[0]).toHaveProperty("content");
     expect(results[0]).toHaveProperty("chunk_hash");
@@ -99,24 +98,24 @@ describeIf("memsearch CLI integration", () => {
     expect(results[0]).toHaveProperty("score");
   });
 
-  it("expand — 应根据 chunk_hash 展开原文", () => {
-    const results = client.search("memory system", 5);
+  it("expand — 应根据 chunk_hash 展开原文", async () => {
+    const results = await client.search("memory system", 5);
     expect(results.length).toBeGreaterThan(0);
 
     const hash = results[0].chunk_hash;
-    const expanded = client.expand(hash);
+    const expanded = await client.expand(hash);
     expect(expanded).toBeTruthy();
     expect(expanded.length).toBeGreaterThan(0);
   });
 
-  it("stats — 应返回已索引 chunk 总数", () => {
-    const total = client.stats();
+  it("stats — 应返回已索引 chunk 总数", async () => {
+    const total = await client.stats();
     expect(total).toBeGreaterThan(0);
   });
 
-  it("reset — 应清空索引", () => {
-    client.reset();
-    const total = client.stats();
+  it("reset — 应清空索引", async () => {
+    await client.reset();
+    const total = await client.stats();
     expect(total).toBe(0);
   });
 });
