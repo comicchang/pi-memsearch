@@ -19,7 +19,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "prepare": "npm run build",
+    "postinstall": "npm run build",
     "test": "vitest run"
   },
   "dependencies": {
