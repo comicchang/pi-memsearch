@@ -19,7 +19,6 @@
   ],
   "scripts": {
     "build": "tsc",
-    "postinstall": "npm run build",
     "test": "vitest run"
   },
   "dependencies": {
@@ -35,6 +34,6 @@
     "vitest": "^3.0.0"
   },
   "pi": {
-    "extensions": ["./dist/plugin.js"]
+    "extensions": ["./src/plugin.ts"]
   }
 }
