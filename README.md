@@ -97,6 +97,9 @@ memsearch:
 | `spawn memsearch ENOENT` | pipx/uvx 安装的需确认 PATH |
 | `no such collection` | 首次 `start()` 自动 index，或手动 `memsearch index .memsearch/memory/` |
 | 搜索无结果 | 检查 `.memsearch/memory/` 是否有 markdown 文件 |
+| `database is locked` 偶发 | 多 session 并发时正常，插件自动重试（最多 3 次） |
+| 写锁等待超时 | 检查 `~/.memsearch/.write.lock` 是否残留，手动删除即可 |
+| 首次搜索很慢 | 正常：uvx 冷启动 + onnxruntime 加载约 30-60s，session_start 已自动预热 |
 ---
 ## 配置
 
@@ -182,6 +185,15 @@ LLM 看到的 `<memories>` block 格式：
 | `per-project` | 独立 collection `memsearch_chunks_{项目名}` | 多项目隔离 |
 | `per-project-tagged` | 同一 collection + `project:xxx` tag 过滤 | 多项目共享索引 |
 
+### 并发安全
+
+多 OMP session 同时启动时共享 `~/.memsearch/milvus.db`（MilvusLite 底层 SQLite），可能触发 `database is locked`。
+插件采用两层防御：
+
+1. **外部写锁**（P0）：`index`/`reset` 操作前获取 `~/.memsearch/.write.lock` 排他锁，预防写-写冲突。读操作（search/stats/expand）不加锁，完全并发。
+2. **指数退避重试**（P1）：所有操作在检测到 SQLite 锁错误时自动重试（读 3 次/1s 基础延迟，写 5 次/2s）。
+3. **启动预热**：`session_start` 时 fire-and-forget 触发 `memsearch --version`，预加载 uvx 缓存 + onnxruntime，减少首次搜索冷启动感知。
+
 ---
 
 ## 工具
@@ -210,9 +222,10 @@ import {
   loadMemsearchConfig,        // (settings: { get(key): string }) => MemsearchConfig
   MemsearchConfig,            // 配置接口类型
   MemsearchScoping,           // scoping 枚举类型
-
   // CLI 客户端
   MemsearchClient,            // new MemsearchClient(config, collectionName, memoryPath)
+  warmupMemsearch,            // () => void — fire-and-forget 预热 uvx + onnxruntime
+
 
   // Recall / Retain
   computeBankScope,           // (config, cwd) => BankScope

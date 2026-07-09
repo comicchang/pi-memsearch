@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { execFile } from "node:child_process";
-import { MemsearchClient } from "./client";
+import { MemsearchClient, warmupMemsearch } from "./client";
 import { autoRecall, autoRetain, computeBankScope, formatMemories } from "./recall";
 import {
   MemsearchSessionState,
@@ -46,8 +46,10 @@ export default function (pi: any) {
       const raw = readFileSync(configPath, "utf-8");
       isEnabled = /^\s*backend:\s*memsearch\s*$/m.test(raw);
     } catch {}
-
     if (!isEnabled) return;
+
+    // P1: 预热 memsearch CLI（fire-and-forget，触发 uvx 缓存 + onnxruntime 加载）
+    warmupMemsearch();
 
     // 使用默认配置（暂不从 omp.config.yml 的 memsearch 块读取）
     const cwd: string = ctx.cwd ?? process.cwd();

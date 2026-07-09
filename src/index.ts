@@ -1,6 +1,6 @@
 // pi-memsearch — barrel export
 export { memsearchBackend } from "./backend";
-export { MemsearchClient } from "./client";
+export { MemsearchClient, warmupMemsearch } from "./client";
 export { loadMemsearchConfig } from "./config";
 export type { MemsearchConfig, MemsearchScoping } from "./config";
 export {
