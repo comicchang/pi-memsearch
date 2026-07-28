@@ -17,13 +17,13 @@ pi-memsearch 是 oh-my-pi 的 memory-backend 插件，通过 ExtensionAPI 生命
 
 | 文件 | 职责 |
 |------|------|
-| `plugin.ts` | ExtensionAPI 插件入口，注册 4 个工具 + 生命周期钩子 |
+| `plugin.ts` | ExtensionAPI 插件入口，注册 6 个工具 + 生命周期钩子（session_start / before_agent_start / turn_end / agent_end / session_before_compact / session_shutdown） |
 | `types.ts` | BankScope / SearchResult / MemsearchSessionStateOptions 类型 |
 | `config.ts` | MemsearchConfig（15 字段） + loadMemsearchConfig() |
 | `client.ts` | MemsearchClient 类，封装 memsearch CLI（search/index/stats/reset/expand） |
 | `state.ts` | MemsearchSessionState 类，Symbol-keyed 存储到 AgentSession |
 | `recall.ts` | autoRecall / autoRetain / computeBankScope / formatMemories |
-| `backend.ts` | memsearchBackend 对象，实现 MemoryBackend 全部方法 |
+| `backend.ts` | memsearchBackend 对象，实现 MemoryBackend 接口（start / buildDeveloperInstructions / clear / enqueue / status / search / save / diagnose / beforeAgentStartPrompt / preCompactionContext） |
 | `index.ts` | barrel export，导出所有公开 API |
 
 ### Symbol-keyed 存储
@@ -152,18 +152,29 @@ memsearch:
 
 每次 agent 启动时，pi-memsearch 自动搜索记忆库，将相关记忆注入 system prompt：
 
-1. 提取最近 `recallContextTurns` 轮对话内容
-2. 拼接为搜索 query → `memsearch search`
-3. 将搜索结果格式化为 `<memories>` block
-4. 通过 `before_agent_start` 钩子注入到 system prompt
+1. 从 `omp.config.yml` 读取实际配置（embeddingProvider / milvusUri / scoping 等 16 个字段）
+2. 提取最近 `recallContextTurns` 轮对话内容
+3. 拼接为搜索 query → `memsearch search`
+4. 将搜索结果格式化为 `<memories>` block
+5. 通过 `before_agent_start` 钩子注入到 system prompt
 
-### 自动 Retain（agent_end）
+### 自动 Retain（turn_end + agent_end 兜底）
 
-每 `retainEveryNTurns` 轮对话结束时，pi-memsearch 自动保存记忆：
+保留两层 retain 触发机制：
 
+1. **turn_end**（主触发）：每个 turn 结束时递增 turnCount，每 `retainEveryNTurns` 个 turn 触发一次 retain。对齐 mnemopi 的 turn-level granularity。
+2. **agent_end**（兜底）：agent loop 结束时额外尝试一次 retain，防止 turn_end 未触发时丢失记忆。
+
+Retain 流程：
 1. 提取对话文本 → 生成 markdown 条目
 2. 写入 `.memsearch/memory/YYYY-MM-DD.md`
 3. 触发 `memsearch index` 重建向量索引
+
+### Compaction 记忆注入（session_before_compact）
+
+对齐 hindsight 的 `preCompactionContext` / mnemopi 的 `recallForCompaction`：
+
+在 compaction 前，从待压缩消息中提取用户消息作为 recall query，搜索相关记忆并注入到 compaction 的额外上下文中。确保压缩后的摘要保留记忆上下文。
 
 ### 记忆注入格式
 
@@ -204,7 +215,9 @@ pi-memsearch 通过 ExtensionAPI 注册以下工具，供 Agent 在对话中使�
 |------|------|
 | `memory_search` | 语义检索 persist 记忆库（BM25 + dense + RRF 混合搜索） |
 | `memory_get` | 根据 chunk_hash 展开完整原文段落 |
-| `memory_stats` | 显示记忆索引入统计（chunk 数量、存储路径等） |
+| `memory_save` | 显式保存记忆到持久化记忆库（写入 .memsearch/memory/ 并触发索引） |
+| `memory_stats` | 显示记忆后端状态和索引统计（作用域、chunk 数、文件数、配置等） |
+| `memory_diagnose` | 诊断记忆后端健康状态（CLI 可用性、数据库、配置一致性、记忆目录） |
 | `memory_transcript` | 读取指定 session 的原始对话记录（OpenCode SQLite） |
 
 ---
@@ -250,7 +263,6 @@ import {
 
 ## 约束
 - 本项目**不修改** oh-my-pi 仓库文件 — 通过 ExtensionAPI 插件方式接入（无需修改类型联合或 Backend 路由）
-- 不实现 diagnose() 方法
 - memory_transcript 读取 OpenCode SQLite 数据库，不封装 `memsearch transcript` 命令
 - 不封装 memsearch compact / watch 命令
 - 不依赖 Docker / Redis / Zilliz Cloud
