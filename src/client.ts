@@ -9,9 +9,8 @@
 
 import { execFile, type ChildProcess } from "node:child_process";
 import { existsSync, openSync, closeSync, unlinkSync, mkdirSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join, dirname } from "node:path";
-import type { MemsearchConfig } from "./config";
+import { expandHome, type MemsearchConfig } from "./config";
 import type { SearchResult } from "./types";
 
 // ── 超时与重试参数 ──
@@ -152,10 +151,8 @@ export class MemsearchClient {
   ) {
     this.config = config;
     this.collectionName = collectionName;
-    this.memoryPath = memoryPath;
-    if (this.config.milvusUri.startsWith("~/")) {
-      this.config.milvusUri = join(homedir(), this.config.milvusUri.slice(2));
-    }
+    this.memoryPath = expandHome(memoryPath);
+    this.config.milvusUri = expandHome(this.config.milvusUri);
     this.writeLockPath = getWriteLockPath(this.config.milvusUri);
   }
 

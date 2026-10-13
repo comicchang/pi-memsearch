@@ -1,5 +1,17 @@
 // src/config.ts — MemsearchConfig 类型定义 + 配置加载
 
+import { homedir } from "node:os";
+import { join } from "node:path";
+
+/**
+ * 展开 "~/" 前缀为用户 home 绝对路径（与 client.ts 对 milvusUri 的既有语义一致）。
+ * 相对路径（如默认 ".memsearch/memory"）原样返回，保持 per-project 语义。
+ * 仅处理 "~/", 不展开 $HOME 或其他环境变量。
+ */
+export function expandHome(p: string): string {
+  return p.startsWith("~/") ? join(homedir(), p.slice(2)) : p;
+}
+
 /**
  * 记忆作用域：记忆在哪个 collection 中存储。
  * - "global": 所有项目共享同一 collection
@@ -148,7 +160,7 @@ export function loadMemsearchConfig(settings: {
       get("recallContextTurns"),
       DEFAULTS.recallContextTurns,
     ),
-    memoryDir: get("memoryDir") || DEFAULTS.memoryDir,
+    memoryDir: expandHome(get("memoryDir") || DEFAULTS.memoryDir),
     debug: toBoolean(get("debug"), DEFAULTS.debug),
   };
 }

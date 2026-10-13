@@ -15,7 +15,7 @@ import {
   getMemsearchSessionState,
   setMemsearchSessionState,
 } from "./state";
-import { loadMemsearchConfig } from "./config";
+import { loadMemsearchConfig, expandHome } from "./config";
 import type { MemsearchConfig } from "./config";
 
 // ── 辅助函数 ──
@@ -504,7 +504,7 @@ export default function (pi: any) {
 
       // 4. Milvus 数据库
       if (config) {
-        const milvusPath = config.milvusUri.replace(/^~/, homedir());
+        const milvusPath = expandHome(config.milvusUri);
         if (existsSync(milvusPath)) {
           const stat = statSync(milvusPath);
           checks.push(`[OK] Milvus DB: ${milvusPath} (${(stat.size / 1024 / 1024).toFixed(1)} MB)`);

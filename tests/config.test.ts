@@ -1,7 +1,11 @@
 // tests/config.test.ts — MemsearchConfig TDD 测试套件
 
 import { describe, it, expect } from "vitest";
-import { loadMemsearchConfig } from "../src/config";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { expandHome, loadMemsearchConfig } from "../src/config";
+import { MemsearchClient } from "../src/client";
+import type { MemsearchConfig } from "../src/config";
 
 /**
  * 模拟 oh-my-pi Settings 对象。
@@ -111,5 +115,59 @@ describe("loadMemsearchConfig", () => {
       makeSettings({ "memsearch.scoping": "" }),
     );
     expect(empty.scoping).toBe("per-project-tagged");
+  });
+});
+
+describe("~/ 路径展开", () => {
+  it("memoryDir 配置 ~/ 路径载入后归一为 home 绝对路径", () => {
+    const config = loadMemsearchConfig(
+      makeSettings({ "memsearch.memoryDir": "~/.memsearch/memory" }),
+    );
+    expect(config.memoryDir).toBe(join(homedir(), ".memsearch/memory"));
+  });
+
+  it("相对路径与绝对路径 memoryDir 保持原样（默认 per-project 语义不变）", () => {
+    const relative = loadMemsearchConfig(
+      makeSettings({ "memsearch.memoryDir": "custom/memories" }),
+    );
+    expect(relative.memoryDir).toBe("custom/memories");
+
+    const absolute = loadMemsearchConfig(
+      makeSettings({ "memsearch.memoryDir": "/var/memsearch/memory" }),
+    );
+    expect(absolute.memoryDir).toBe("/var/memsearch/memory");
+  });
+
+  it("expandHome 与 milvusUri 既有展开语义一致", () => {
+    expect(expandHome("~/.memsearch/milvus.db")).toBe(
+      join(homedir(), ".memsearch/milvus.db"),
+    );
+    expect(expandHome(".memsearch/memory")).toBe(".memsearch/memory");
+    expect(expandHome("/abs/path")).toBe("/abs/path");
+    // 仅 "~/" 前缀触发展开；"~user/..." 与 "$HOME" 不展开
+    expect(expandHome("~other/x")).toBe("~other/x");
+    expect(expandHome("$HOME/x")).toBe("$HOME/x");
+  });
+
+  it("MemsearchClient 构造器归一 memoryPath 与 milvusUri", () => {
+    // 构造器不调用 execFile，静态导入安全；private 字段经结构化断言读取
+    const client = new MemsearchClient(
+      loadMemsearchConfig(
+        makeSettings({
+          "memsearch.milvusUri": "~/.memsearch/milvus.db",
+          "memsearch.memoryDir": "~/.memsearch/memory",
+        }),
+      ),
+      "memsearch_chunks",
+      "~/.memsearch/memory",
+    );
+    const internals = client as unknown as {
+      memoryPath: string;
+      config: MemsearchConfig;
+    };
+    expect(internals.memoryPath).toBe(join(homedir(), ".memsearch/memory"));
+    expect(internals.config.milvusUri).toBe(
+      join(homedir(), ".memsearch/milvus.db"),
+    );
   });
 });
