@@ -1,5 +1,18 @@
 # pi-memsearch
 
+> [!WARNING]
+> **本项目已日落（2026-10-16），仓库归档只读、不再维护。**
+> 请改用 [espadat-studio/pi-memsearch](https://github.com/espadat-studio/pi-memsearch)（`pi install npm:pi-memsearch`）：
+> 功能更全（7 工具、`memory_forget`/`memory_compact`、跨仓检索）、测试与 CI 完备、活跃维护，
+> 且写入 memsearch mesh 标准格式，与 Claude Code / Codex / OpenCode 的记忆库互通。
+>
+> OMP（oh-my-pi）兼容性注记：OMP fork 没有 `agent_settled` 事件，第三方的被动自动记忆捕获
+> 在 OMP 上不会触发（显式 `memory_write` 与快照注入正常）。若需要被动捕获，向上游提
+> `agent_settled` → `agent_end`/`turn_end` 兜底注册的 PR。
+>
+> 迁移：记忆数据在 memsearch 存储（`~/.memsearch/memory` / `memsearch_chunks`）里无损保留，
+> 插件替换后由新插件继续读写；本插件没有专属数据格式需要导出。
+
 [![license](https://img.shields.io/badge/license-MIT-yellow)](https://github.com/comicchang/pi-memsearch/blob/master/LICENSE)
 [![test](https://img.shields.io/badge/test-67%20passed-brightgreen)](.)
 
